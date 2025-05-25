@@ -1,0 +1,47 @@
+# ────────── Ambientes virtuais ──────────
+.venv/
+env/
+venv/
+
+# ────────── Artefatos Python ──────────
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+
+# ────────── Configuração IDE/Editor ──────────
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ────────── Logs, dados temporários ──────────
+*.log
+*.tmp
+*.cache
+*.sqlite3
+*.db
+*.egg-info/
+
+# ────────── Arquivos/segredos locais ──────────
+.env
+.env.*
+
+# ────────── Dados de exemplo ou uploads ──────────
+data/
+uploads/
+*.parquet
+*.csv
+
+# ────────── Build / Docker / CI ──────────
+dist/
+build/
+*.egg
+.Dockerfile.swp
+coverage.xml
+htmlcov/
+
+# ────────── Sistema operacional ──────────
+.DS_Store        # macOS
+Thumbs.db        # Windows
