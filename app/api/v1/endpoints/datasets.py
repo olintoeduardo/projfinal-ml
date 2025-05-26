@@ -1,67 +1,71 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import List
 
 import pandas as pd
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from starlette.responses import JSONResponse
 
-UPLOAD_DIR = Path("uploads") # onde os arquivos são salvos
+UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
-# armazenamento em memória (metadata apenas)
-_DATA: Dict[int, dict] = {}
-_COUNTER = 0
+
+def _build_path(ds_id: str) -> Path:
+    """Encontra o arquivo que começa com <ds_id>_ dentro de uploads/."""
+    candidates = list(UPLOAD_DIR.glob(f"{ds_id}.csv"))
+    if not candidates:
+        raise HTTPException(404, detail="Dataset não encontrado")
+    # Se houver duplicados, pega o primeiro (esperado 1-para-1)
+    return candidates[0]
+
+
+def _read_df(path: Path, nrows: int | None = None) -> pd.DataFrame:
+    if path.suffix in {".xls", ".xlsx"}:
+        return pd.read_excel(path, nrows=nrows)
+    return pd.read_csv(path, nrows=nrows, sep=";", parse_dates=[0], index_col=0)
+
+
+def _metadata(path: Path) -> dict:
+    df_head = _read_df(path, nrows=0)   # lê só header → colunas
+    rows = sum(1 for _ in open(path, "rb")) - 1 if path.suffix == ".csv" else None
+    # Para Excel não há leitura rápida de linhas sem abrir toda planilha,
+    # então usa len(df) (custa mais, mas ok para MVP).
+    if rows is None:
+        rows = len(_read_df(path))
+    return {
+        "id": path.stem.split("_")[0],
+        "name": path.name.split("_", 1)[1],
+        "columns": list(df_head.columns),
+        "rows": rows,
+        "uploaded_at": datetime.utcfromtimestamp(int(path.stem.split("_")[0])).isoformat()
+    }
 
 
 @router.post("", status_code=201)
 async def upload_dataset(file: UploadFile = File(...)):
-    """
-    Recebe CSV ou Excel e salva *o próprio arquivo* em uploads/.
-    """
+    """Upload CSV/XLSX e salva em uploads/ usando timestamp como id."""
     if not file.filename.endswith((".csv", ".xls", ".xlsx")):
         raise HTTPException(415, "Só aceito CSV ou Excel")
 
-    raw_bytes = await file.read()
-    saved_path = UPLOAD_DIR / f"{int(datetime.utcnow().timestamp())}_{file.filename}"
-    saved_path.write_bytes(raw_bytes)
+    ds_id = 0
+    saved_path = UPLOAD_DIR / f"{ds_id}_{file.filename}"
+    saved_path.write_bytes(await file.read())
 
-    # Lê só para pegar metadados (colunas, rows)
-    if file.filename.endswith((".xls", ".xlsx")):
-        df = pd.read_excel(saved_path)
-    else:
-        df = pd.read_csv(saved_path)
-
-    global _COUNTER
-    _COUNTER += 1
-    _DATA[_COUNTER] = {
-        "path": str(saved_path),
-        "name": file.filename,
-        "columns": list(df.columns),
-        "rows": len(df),
-        "uploaded_at": datetime.utcnow().isoformat(),
-    }
-    return {"id": _COUNTER, **_DATA[_COUNTER]}
+    return _metadata(saved_path)
 
 
-@router.get("/{ds_id}")
-def dataset_info(ds_id: int):
-    if ds_id not in _DATA:
-        raise HTTPException(404, "ID não encontrado")
-    return _DATA[ds_id]
+@router.get("/info")
+def dataset_info(ds_id: str):
+    """Retorna metadados do dataset identificado pelo timestamp."""
+    path = _build_path(ds_id)
+    return _metadata(path)
 
 
-@router.get("/{ds_id}/sample")
-def dataset_sample(ds_id: int, n: int = 5):
-    if ds_id not in _DATA:
-        raise HTTPException(404, "ID não encontrado")
-
-    path = _DATA[ds_id]["path"]
-    if path.endswith((".xls", ".xlsx")):
-        df = pd.read_excel(path, nrows=n)
-    else:
-        df = pd.read_csv(path, nrows=n)
-
+@router.get("/sample")
+def dataset_sample(ds_id: str, n: int = 5):
+    """Devolve as *n* primeiras linhas em JSON."""
+    path = _build_path(ds_id)
+    df = _read_df(path, nrows=n)
     return JSONResponse(df.to_dict(orient="records"))
