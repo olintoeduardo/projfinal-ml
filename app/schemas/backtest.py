@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class BacktestRequest(BaseModel):
     dataset_id: str
     model_type: str               # ex: "ridge", "lasso", "random_forest"
-    hyperparams: Dict[str, float] = {}
+    hyperparams: Dict[str, List[float]] = {}
     window_type: str = "rolling"  # "expanding" ou "rolling"
     window_size: Optional[int] = None  # obrigatório se window_type == "rolling"
     horizon: int

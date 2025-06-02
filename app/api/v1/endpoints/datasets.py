@@ -24,7 +24,7 @@ def _build_path(ds_id: str) -> Path:
 def _read_df(path: Path, nrows: int | None = None) -> pd.DataFrame:
     if path.suffix in {".xls", ".xlsx"}:
         return pd.read_excel(path, nrows=nrows)
-    return pd.read_csv(path, nrows=nrows, sep=";", parse_dates=[0], index_col=0)
+    return pd.read_csv(path, nrows=nrows, sep=";", index_col=0)
 
 
 def _metadata(path: Path) -> dict:
