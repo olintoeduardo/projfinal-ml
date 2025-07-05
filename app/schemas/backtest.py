@@ -25,6 +25,8 @@ class PredictionPoint(BaseModel):
     date: str                     # ISO format
     y_true: float
     y_pred: float
+    hyperparams: Dict[str, float]  # valores escalares
+
 
 
 class BacktestResult(BaseModel):

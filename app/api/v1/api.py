@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import datasets, transformations, backtest
 
-api_router = APIRouter(prefix="/api/v1")
+api_router = APIRouter()
 
 # cada include mantém seu próprio prefixo/tags
 api_router.include_router(datasets.router)
