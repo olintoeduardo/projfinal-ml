@@ -10,25 +10,15 @@ from app.api.v1.endpoints.datasets import _build_path, _read_df  # helpers
 
 UPLOAD_DIR = Path("uploads")
 
-# agora o dataset_id faz parte do path
 router = APIRouter(
     prefix="/transform",
     tags=["transformations"],
 )
 
-
-# ───────── helpers comuns ────────────────────────────────────────
-def _save(df: pd.DataFrame, base_path: Path, suffix: str) -> Path:
-    new_name = f"{base_path.stem}__{suffix}.csv"
-    out_path = base_path.with_name(new_name)
-    df.to_csv(out_path, index=True, sep=";")
-    return out_path
-
-
-def _finish(df_out: pd.DataFrame, out_path: Path):
+# ───────── helpers atualizados ────────────────────────────────────────
+def _finish_samefile(df_out: pd.DataFrame, base_path: Path):
     preview = df_out.head(5).reset_index()
 
-    # convert Timestamps → string
     for col in preview.columns:
         if pd.api.types.is_datetime64_any_dtype(preview[col]):
             preview[col] = preview[col].astype(str)
@@ -36,7 +26,7 @@ def _finish(df_out: pd.DataFrame, out_path: Path):
             preview[col] = preview[col].map(lambda x: x.isoformat())
 
     payload = {
-        "new_file": str(out_path.relative_to(UPLOAD_DIR)),
+        "file_saved": str(base_path.relative_to(UPLOAD_DIR)),
         "rows": len(df_out),
         "columns": list(df_out.columns),
         "preview": preview.to_dict(orient="records"),
@@ -44,24 +34,28 @@ def _finish(df_out: pd.DataFrame, out_path: Path):
     return JSONResponse(jsonable_encoder(payload), status_code=201)
 
 
-def _base_series(dataset_id: str, column: str) -> tuple[pd.Series, Path]:
+def _read_full_df(dataset_id: str) -> tuple[pd.DataFrame, Path]:
     path = _build_path(dataset_id)
-    df = _read_df(path).dropna()
-    if column not in df.columns:
-        raise HTTPException(400, f"Coluna {column} não encontrada")
-    return df[column], path
+    df = _read_df(path)
+    return df, path
 
 
 # ───────── endpoints ────────────────────────────────────────────
 @router.post("/pct_change", status_code=201)
 def pct_change(
     dataset_id: str,
-    column: str = Query(..., description="Nome da coluna"),
-    periods: int = Query(..., ge=1, description="Nº períodos"),
+    column: str = Query(...),
+    periods: int = Query(..., ge=1),
 ):
-    s, base_path = _base_series(dataset_id, column)
-    df_out = s.pct_change(periods).to_frame(f"{column}_pct_change_{periods}").dropna().reset_index()
-    return _finish(df_out, _save(df_out, base_path, f"pct_change_{periods}"))
+    df, path = _read_full_df(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(400, f"Column '{column}' not found")
+
+    new_col = f"{column}_pct_change_{periods}"
+    df[new_col] = df[column].pct_change(periods)
+    df = df.dropna(subset=[new_col])
+    df.to_csv(path, index=True, sep=",")
+    return _finish_samefile(df, path)
 
 
 @router.post("/diff", status_code=201)
@@ -70,9 +64,15 @@ def diff(
     column: str = Query(...),
     periods: int = Query(..., ge=1),
 ):
-    s, base_path = _base_series(dataset_id, column)
-    df_out = s.diff(periods).to_frame(f"{column}_diff_{periods}").dropna().reset_index()
-    return _finish(df_out, _save(df_out, base_path, f"diff_{periods}"))
+    df, path = _read_full_df(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(400, f"Column '{column}' not found")
+
+    new_col = f"{column}_diff_{periods}"
+    df[new_col] = df[column].diff(periods)
+    df = df.dropna(subset=[new_col])
+    df.to_csv(path, index=True, sep=",")
+    return _finish_samefile(df, path)
 
 
 @router.post("/rolling_mean", status_code=201)
@@ -81,9 +81,15 @@ def rolling_mean(
     column: str = Query(...),
     window: int = Query(..., ge=1),
 ):
-    s, base_path = _base_series(dataset_id, column)
-    df_out = s.rolling(window).mean().to_frame(f"{column}_rollmean_{window}").dropna().reset_index()
-    return _finish(df_out, _save(df_out, base_path, f"rollmean_{window}"))
+    df, path = _read_full_df(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(400, f"Column '{column}' not found")
+
+    new_col = f"{column}_rollmean_{window}"
+    df[new_col] = df[column].rolling(window).mean()
+    df = df.dropna(subset=[new_col])
+    df.to_csv(path, index=True, sep=",")
+    return _finish_samefile(df, path)
 
 
 @router.post("/resample", status_code=201)
@@ -93,13 +99,24 @@ def resample(
     freq: str = Query(..., examples=["M", "Q", "A"]),
     how: str = Query("mean", examples=["mean", "sum", "ffill", "bfill"]),
 ):
-    s, base_path = _base_series(dataset_id, column)
+    df, path = _read_full_df(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(400, f"Column '{column}' not found")
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise HTTPException(400, "Index must be a datetime for resampling")
+
+    s = df[column]
     if how in {"ffill", "bfill"}:
-        res = s.resample(freq).ffill() if how == "ffill" else s.resample(freq).bfill()
+        resampled = s.resample(freq).ffill() if how == "ffill" else s.resample(freq).bfill()
     else:
-        res = s.resample(freq).agg(how)
-    df_out = res.to_frame(f"{column}_resample_{freq}_{how}").dropna().reset_index()
-    return _finish(df_out, _save(df_out, base_path, f"resample_{freq}_{how}"))
+        resampled = s.resample(freq).agg(how)
+
+    new_col = f"{column}_resample_{freq}_{how}"
+    new_df = resampled.to_frame(new_col).dropna()
+    df_resampled = new_df  # sobrescreve com somente as datas válidas
+    df_resampled.to_csv(path, index=True, sep=",")
+    return _finish_samefile(df_resampled, path)
 
 
 @router.post("/cumsum", status_code=201)
@@ -107,6 +124,12 @@ def cumsum(
     dataset_id: str,
     column: str = Query(...),
 ):
-    s, base_path = _base_series(dataset_id, column)
-    df_out = s.cumsum().to_frame(f"{column}_cumsum").dropna().reset_index()
-    return _finish(df_out, _save(df_out, base_path, "cumsum"))
+    df, path = _read_full_df(dataset_id)
+    if column not in df.columns:
+        raise HTTPException(400, f"Column '{column}' not found")
+
+    new_col = f"{column}_cumsum"
+    df[new_col] = df[column].cumsum()
+    df = df.dropna(subset=[new_col])
+    df.to_csv(path, index=True, sep=",")
+    return _finish_samefile(df, path)

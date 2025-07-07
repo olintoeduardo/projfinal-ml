@@ -33,4 +33,4 @@ class BacktestResult(BaseModel):
     id: str
     status: str                   # deve ser "completed" ou "failed"
     metrics: List[MetricResult]
-    predictions: List[PredictionPoint]
+    predictions: List
