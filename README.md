@@ -1,65 +1,71 @@
-# Projeto Final - Machine Learning
+# Backtoseries API — Machine Learning forecasting for Time Series
 
-Este repositório contém o código do meu projeto final de graduação em Ciência da Computação.  
-O objetivo é desenvolver e avaliar modelos de **aprendizado de máquina aplicados a séries temporais econômicas**, com foco em backtesting e previsão.
+This repository contains an API applying Machine Learning to economic time series, with components for data collection and preprocessing, experiments, backtesting, and an API to serve forecasts.
 
-## Estrutura do Repositório
+---
 
-```
+## 📂 Project Structure
+
+```text
 projfinal-ml/
-│── app/                # Código principal do projeto
-│── .gitignore          # Arquivos ignorados pelo Git
+│
+├── app/
+│   ├── main.py                # Application / API entry point
+│   ├── api/                   # API endpoints (routes, controllers)
+│   ├── models/                # Trained models, pipelines, serialization
+│   ├── data/                  # Data ingestion, transformation, cleaning
+│   ├── backtesting/           # Simulations, historical tests, validations
+│   └── utils/                 # Utility functions, metrics, helpers
+│
+├── notebooks/                 # Analysis and experiment notebooks (optional)
+├── tests/                     # Unit / integration tests (if available)
+├── requirements.txt           # Project dependencies
+├── .gitignore
+└── README.md                  # This file
 ```
 
-## Funcionalidades
+---
 
-- Processamento de séries temporais econômicas.
-- Implementação de modelos de machine learning.
-- Backtesting e avaliação de performance.
-- API para interação com os modelos.
+## 🎯 Objective
 
-## Tecnologias Utilizadas
+The goal of this project is to:
 
-- **Python 3.11+**
-- **pandas**, **numpy**, **scikit-learn**
-- **FastAPI**
-- **Uvicorn**
-- **plotly** (visualização)
+- apply **machine learning** techniques to economic time series data;
+- perform **backtesting** to evaluate historical model performance;
+- serve forecasts through a **web API** for external consumption;
+- compare different algorithms (regression, tree-based models, neural networks, etc.);
+- generate visualizations and performance reports.
 
-## Como Executar
+---
 
-Clone o repositório:
+## 🧰 Technologies Used
 
-```bash
-git clone https://github.com/olintoeduardo/projfinal-ml.git
-cd projfinal-ml
-```
+- **Python** (3.x)
+- Core libraries: `pandas`, `numpy`, `scikit-learn`
+- Web framework: **FastAPI**
+- ASGI server: **Uvicorn**
+- Visualization: `matplotlib`, `seaborn`, `plotly`, etc.
 
-Crie um ambiente virtual e instale as dependências:
+---
 
-```bash
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-venv\Scripts\activate      # Windows
+## 📦 API Endpoints (examples)
 
-pip install -r requirements.txt
-```
+Here are examples of endpoints that should be documented:
 
-Execute a aplicação:
+| Method | Route                | Description                                   |
+|--------|-----------------------|-----------------------------------------------|
+| GET    | `/predict?period=30`  | Returns the forecast for the next 30 days     |
+| POST   | `/train`              | Triggers model retraining                     |
+| GET    | `/metrics`            | Returns performance metrics                   |
+| ...    | ...                   | Other project-specific endpoints              |
 
-```bash
-uvicorn app.main:app --reload
-```
+---
 
-Acesse em: [http://localhost:8000](http://localhost:8000)
+## 🔍 Experiments & Backtesting
 
-## Próximos Passos
-
-- [ ] Adicionar testes unitários
-- [ ] Documentar os endpoints da API
-- [ ] Criar notebooks de experimentos
-- [ ] Incluir exemplos de uso
-
-## Autor
-
-Projeto desenvolvido por **Eduardo Olinto**.
+- **Features / variables** used as model inputs  
+- **Preprocessing**: normalization, handling missing values, creation of lags, rolling windows  
+- **Models compared**: linear regression, decision trees, random forest, neural networks, etc.  
+- **Validation strategy**: cross-validation, rolling windows, walk-forward, etc.  
+- **Backtesting**: historical simulation, evaluation of hypothetical profitability  
+- **Metrics**: MAE (Mean Absolute Error), RMSE, MAPE, simulated financial return  
