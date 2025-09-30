@@ -7,21 +7,31 @@ This repository contains an API applying Machine Learning to economic time serie
 ## 📂 Project Structure
 
 ```text
-projfinal-ml/
-│
-├── app/
-│   ├── main.py                # Application / API entry point
-│   ├── api/                   # API endpoints (routes, controllers)
-│   ├── models/                # Trained models, pipelines, serialization
-│   ├── data/                  # Data ingestion, transformation, cleaning
-│   ├── backtesting/           # Simulations, historical tests, validations
-│   └── utils/                 # Utility functions, metrics, helpers
-│
-├── notebooks/                 # Analysis and experiment notebooks (optional)
-├── tests/                     # Unit / integration tests (if available)
-├── requirements.txt           # Project dependencies
-├── .gitignore
-└── README.md                  # This file
+├── README.md
+├── app
+│   ├── api
+│   │   ├── v1
+│   │   │   ├── __init__.py
+│   │   │   ├── api.py
+│   │   │   └── endpoints
+│   │   │       ├── __pycache__
+│   │   │       ├── backtest.py
+│   │   │       ├── datasets.py
+│   │   │       └── transformations.py
+│   │   └── v2
+│   ├── core
+│   │   └── config.py
+│   ├── main.py
+│   ├── schemas
+│   │   ├── backtest.py
+│   │   ├── datasets.py
+│   │   └── transformations.py
+│   └── services
+│       └── backtest
+│           └── backtest_service.py
+├── requirements.txt
+└── uploads
+    └── 0__cumsum.csv
 ```
 
 ---
@@ -48,24 +58,36 @@ The goal of this project is to:
 
 ---
 
-## 📦 API Endpoints (examples)
+## 📦 API Endpoints
 
-Here are examples of endpoints that should be documented:
-
-| Method | Route                | Description                                   |
-|--------|-----------------------|-----------------------------------------------|
-| GET    | `/predict?period=30`  | Returns the forecast for the next 30 days     |
-| POST   | `/train`              | Triggers model retraining                     |
-| GET    | `/metrics`            | Returns performance metrics                   |
-| ...    | ...                   | Other project-specific endpoints              |
+### Dataset
+- Users can interact with datasets they wish to model.  
+- Must be able to upload `.csv` files containing time series data (via **POST** requests to the API).  
+- Uploaded files are mapped to a dedicated folder in the GitHub repository (future plan: migrate to a SQL server).  
+- Users can issue **GET** requests to preview basic dataset information (e.g., data samples), using a unique identifier.  
 
 ---
 
-## 🔍 Experiments & Backtesting
+### Transformation
+Users can apply simple data transformations using common Pandas functions:
+- **Percentage Change**: calculates relative changes over consecutive periods; useful for analyzing short- and long-term trends.  
+- **Difference**: computes the difference between consecutive periods; essential for making series stationary.  
+- **Moving Average**: smooths data over a rolling window; reduces short-term noise and reveals patterns.  
+- **Resample**: aggregates higher-frequency data into lower-frequency intervals; aligns series with different granularities.  
+- **Cumulative Sum**: converts flow data into stock format (inverse of difference).  
 
-- **Features / variables** used as model inputs  
-- **Preprocessing**: normalization, handling missing values, creation of lags, rolling windows  
-- **Models compared**: linear regression, decision trees, random forest, neural networks, etc.  
-- **Validation strategy**: cross-validation, rolling windows, walk-forward, etc.  
-- **Backtesting**: historical simulation, evaluation of hypothetical profitability  
-- **Metrics**: MAE (Mean Absolute Error), RMSE, MAPE, simulated financial return  
+---
+
+### Backtest
+The core system component, allowing users to run backtests by submitting parameters via **POST** requests:
+- **Dataset identifier**  
+- **Model type**: supported models include `LinearRegression`, `Ridge`, `Lasso`, `RandomForestRegressor`, `GradientBoostingRegressor`  
+- **Hyperparameter set**: dictionary mapping each parameter to a list of values to be tested  
+- **Tuning frequency**: integer defining how often Grid Search runs to find optimal hyperparameters  
+- **Window type**: rolling or expanding (defines validation approach)  
+- **Window size** (if rolling)  
+- **Forecast horizon**: number of steps ahead to predict  
+- **Standardize**: apply `StandardScaler` at each iteration (similar to Z-score)  
+- **Parallelize**: run backtests of each model in parallel  
+- **Error metrics**: RMSE, MAE, MAPE, etc.  
+
