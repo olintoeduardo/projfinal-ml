@@ -1,0 +1,130 @@
+
+--------------------------------------------------------------
+1) Generic Prompt
+--------------------------------------------------------------
+Prompt:
+Generate a JSON to forecast BRL using MXN, CLP, COP, and ZAR with the Lasso model and a rolling window of four years.
+Respond only with the JSON.
+
+LLM Output (INCORRECT):
+{
+  "dataset_id": "ems_ccys_resampled",
+  "target_column": "BRL Curncy",
+  "feature_columns": ["MXN Curncy", "CLP Curncy", "COP Curncy", "ZAR Curncy"],
+  "model_specs": [
+    {
+      "model_type": "lasso",
+      "hyperparams": {"alpha": [0.0001, 0.001, 0.01, 0.1]}
+    }
+  ],
+  "tuning_frequency": 4,
+  "window_type": "rolling",
+  "window_size": "4y",
+  "initial_window": "4y",
+  "horizon": 1,
+  "metrics": ["RMSE", "MAE"],
+  "execution_mode": "parallel",
+  "is_nowcast": false,
+  "standardize": true
+}
+
+--------------------------------------------------------------
+2) Specific Prompt
+--------------------------------------------------------------
+Prompt:
+Generate a JSON for the /backtests endpoint with the following parameters:
+- dataset_id = ems_ccys_resampled
+- target_column = BRL Curncy
+- feature_columns = [MXN Curncy, CLP Curncy, COP Curncy, ZAR Curncy]
+- model = Lasso
+- rolling window = 4 years
+- tuning frequency = 4 years
+- horizon = 1
+- metrics = RMSE and MAE
+The dataset has weekly frequency, so please take that into account.
+Respond only with the JSON.
+
+LLM Output (CORRECT):
+{
+  "dataset_id": "ems_ccys_resampled",
+  "target_column": "BRL Curncy",
+  "feature_columns": ["MXN Curncy", "CLP Curncy", "COP Curncy", "ZAR Curncy"],
+  "model_specs": [
+    {
+      "model_type": "lasso",
+      "hyperparams": {"alpha": [0.0001, 0.001, 0.01, 0.1]}
+    }
+  ],
+  "tuning_frequency": 208,
+  "window_type": "rolling",
+  "window_size": 208,
+  "initial_window": 208,
+  "horizon": 1,
+  "metrics": ["rmse", "mae"],
+  "execution_mode": "parallel",
+  "is_nowcast": false,
+  "standardize": true
+}
+
+--------------------------------------------------------------
+3) Highly Specific Prompt (with Schema)
+--------------------------------------------------------------
+Prompt:
+You are an assistant that generates JSON payloads for the BACK2SERIES API.
+The endpoint /backtests expects the following schema:
+
+class BacktestRequest(BaseModel):
+    dataset_id: str
+    target_column: str
+    feature_columns: List[str]
+    model_specs: List[ModelSpec]
+    tuning_frequency: int = 10
+    window_type: str = "rolling"  # "rolling" or "expanding"
+    window_size: int | None = None
+    initial_window: int = 0
+    horizon: int = 1
+    metrics: List[str] = ["rmse", "mae"]
+    execution_mode: str = "sequential"  # "sequential" or "parallel"
+    is_nowcast: bool = False
+    standardize: bool = True
+
+class ModelSpec(BaseModel):
+    model_type: str
+    hyperparams: Dict
+
+Now generate a valid JSON for a backtest that:
+- uses dataset_id = "ems_ccys_resampled"
+- predicts BRL Curncy using MXN, CLP, COP, and ZAR
+- uses model_type = "lasso" with hyperparams {"alpha": [0.0001, 0.001, 0.01, 0.1]}
+- has tuning_frequency = 208 (4 years of weekly data)
+- window_type = "rolling"
+- window_size = 208
+- initial_window = 208
+- horizon = 1
+- metrics = ["rmse", "mae"]
+- execution_mode = "parallel"
+- is_nowcast = false
+- standardize = true
+Respond only with the JSON body, no explanations or comments.
+
+LLM Output (CORRECT):
+{
+  "dataset_id": "ems_ccys_resampled",
+  "target_column": "BRL Curncy",
+  "feature_columns": ["MXN Curncy", "CLP Curncy", "COP Curncy", "ZAR Curncy"],
+  "model_specs": [
+    {
+      "model_type": "lasso",
+      "hyperparams": {"alpha": [0.0001, 0.001, 0.01, 0.1]}
+    }
+  ],
+  "tuning_frequency": 208,
+  "window_type": "rolling",
+  "window_size": 208,
+  "initial_window": 208,
+  "horizon": 1,
+  "metrics": ["rmse", "mae"],
+  "execution_mode": "parallel",
+  "is_nowcast": false,
+  "standardize": true
+}
